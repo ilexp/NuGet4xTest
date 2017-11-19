@@ -100,7 +100,7 @@ namespace NuGet4XTest
 			string rootPath = "ProjectRoot";
 			string packagesPath = Path.Combine(rootPath, "Packages");
 			string targetPath = Path.Combine(rootPath, "Target");
-			ISettings settings = new Settings(rootPath);
+			ISettings settings = new CustomNuGetSettings(rootPath);
 			PackageSourceProvider sourceProvider = new PackageSourceProvider(settings);
 			SourceRepositoryProvider repoProvider = new SourceRepositoryProvider(sourceProvider, resourceProviders);
 			NuGetPackageManager manager = new NuGetPackageManager(repoProvider, settings, packagesPath);
