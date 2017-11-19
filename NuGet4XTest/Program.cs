@@ -31,7 +31,7 @@ namespace NuGet4XTest
 		}
 		private static async Task MainAsync(string[] args)
 		{
-			NuGetLogger logger = new NuGetLogger();
+			CustomNuGetLogger logger = new CustomNuGetLogger();
 			
 			DefaultFrameworkNameProvider frameworkNameProvider = new DefaultFrameworkNameProvider();
 			string testAppFrameworkName = Assembly.GetExecutingAssembly().GetCustomAttributes(true)
@@ -104,7 +104,7 @@ namespace NuGet4XTest
 			PackageSourceProvider sourceProvider = new PackageSourceProvider(settings);
 			SourceRepositoryProvider repoProvider = new SourceRepositoryProvider(sourceProvider, resourceProviders);
 			NuGetPackageManager manager = new NuGetPackageManager(repoProvider, settings, packagesPath);
-			DebugNuGetProject project = new DebugNuGetProject(targetPath, new PackagePathResolver(targetPath, false), currentFramework);
+			CustomNuGetProject project = new CustomNuGetProject(targetPath, currentFramework);
 
 			bool allowPrereleaseVersions = true;
 			bool allowUnlisted = false;
@@ -113,7 +113,7 @@ namespace NuGet4XTest
 				allowPrereleaseVersions, 
 				allowUnlisted, 
 				VersionConstraints.ExactMajor);    
-			INuGetProjectContext projectContext = new ProjectContext();
+			INuGetProjectContext projectContext = new CustomNuGetProjectContext();
 			List<SourceRepository> sourceRepositories = new List<SourceRepository>();
 			sourceRepositories.Add(sourceRepository);
 
@@ -129,154 +129,6 @@ namespace NuGet4XTest
 			Console.WriteLine();
 			Console.WriteLine();
 			Console.WriteLine("Done");
-		}
-	}
-
-	public static class DebugExtensions
-	{
-		public static void Dump(this IEnumerable<IPackageSearchMetadata> metadata)
-		{
-			foreach (IPackageSearchMetadata item in metadata)
-			{
-				Console.WriteLine("{0}", item.Identity);
-				Console.WriteLine("  Tags: {0}", item.Tags);
-				Console.WriteLine("  Summary: {0}", item.Summary);
-				foreach (PackageDependencyGroup group in item.DependencySets)
-				{
-					Console.WriteLine("  Dependencies for '{0}':", group.TargetFramework);
-					foreach (PackageDependency dependency in group.Packages)
-					{
-						Console.WriteLine("    {0} {1}", dependency.Id, dependency.VersionRange);
-					}
-				}
-				if (item.DependencySets.Any())
-					Console.WriteLine();
-			}
-		}
-		public static void Dump(this IEnumerable<RemoteSourceDependencyInfo> dependencyInfo)
-		{
-			foreach (RemoteSourceDependencyInfo item in dependencyInfo)
-			{
-				Console.WriteLine("{0}", item.Identity);
-				foreach (PackageDependencyGroup group in item.DependencyGroups)
-				{
-					Console.WriteLine("  Dependencies for '{0}':", group.TargetFramework);
-					foreach (PackageDependency dependency in group.Packages)
-					{
-						Console.WriteLine("    {0} {1}", dependency.Id, dependency.VersionRange);
-					}
-				}
-				if (item.DependencyGroups.Any())
-					Console.WriteLine();
-			}
-		}
-		public static void Dump(this IEnumerable<SourcePackageDependencyInfo> dependencyInfo)
-		{
-			foreach (SourcePackageDependencyInfo item in dependencyInfo)
-			{
-				Console.WriteLine("{0} {1}", item.Id, item.Version);
-				foreach (PackageDependency dependency in item.Dependencies)
-				{
-					Console.WriteLine("  {0} {1}", dependency.Id, dependency.VersionRange);
-				}
-				if (item.Dependencies.Any())
-					Console.WriteLine();
-			}
-		}
-	}
-
-	public class DebugNuGetProject : FolderNuGetProject
-	{
-		public DebugNuGetProject(string path, PackagePathResolver resolver, NuGetFramework framework) : base(path, resolver, framework) { }
-
-		public override Task PreProcessAsync(INuGetProjectContext nuGetProjectContext, CancellationToken token)
-		{
-			Console.WriteLine("PreProcessAsync");
-			return base.PostProcessAsync(nuGetProjectContext, token);
-		}
-		public override Task PostProcessAsync(INuGetProjectContext nuGetProjectContext, CancellationToken token)
-		{
-			Console.WriteLine("PostProcessAsync");
-			return base.PostProcessAsync(nuGetProjectContext, token);
-		}
-		public override Task<IEnumerable<PackageReference>> GetInstalledPackagesAsync(CancellationToken token)
-		{
-			Console.WriteLine("GetInstalledPackagesAsync");
-			return base.GetInstalledPackagesAsync(token);
-		}
-		public override Task<bool> InstallPackageAsync(PackageIdentity packageIdentity, DownloadResourceResult downloadResourceResult, INuGetProjectContext nuGetProjectContext, CancellationToken token)
-		{
-			Console.WriteLine("InstallPackageAsync({0})", packageIdentity);
-			return base.InstallPackageAsync(packageIdentity, downloadResourceResult, nuGetProjectContext, token);
-		}
-		public override Task<bool> UninstallPackageAsync(PackageIdentity packageIdentity, INuGetProjectContext nuGetProjectContext, CancellationToken token)
-		{
-			Console.WriteLine("UninstallPackageAsync({0})", packageIdentity);
-			return base.UninstallPackageAsync(packageIdentity, nuGetProjectContext, token);
-		}
-	}
-	public class ProjectContext : INuGetProjectContext
-	{
-		public PackageExtractionContext PackageExtractionContext { get; set; }
-		public XDocument OriginalPackagesConfig { get; set; }
-		public NuGetActionType ActionType { get; set; }
-		public TelemetryServiceHelper TelemetryService { get; set; }
-		public ISourceControlManagerProvider SourceControlManagerProvider
-		{
-			get { return null; }
-		}
-		public NuGet.ProjectManagement.ExecutionContext ExecutionContext
-		{
-			get { return null; }
-		}
-		
-		public void Log(MessageLevel level, string message, params object[] args)
-		{
-			Console.WriteLine("{0}: {1}", level, string.Format(message, args));
-		}
-		public void ReportError(string message)
-		{
-			Console.WriteLine("Reported Error: {0}", message);
-		}
-		public FileConflictAction ResolveFileConflict(string message)
-		{
-			return FileConflictAction.Overwrite;
-		}
-	}
-
-	public class NuGetLogger : LoggerBase
-	{
-		public override void Log(ILogMessage message)
-		{
-			StringBuilder builder = new StringBuilder();
-			//builder.Append(message.Time);
-			//builder.Append(' ');
-			builder.Append(message.Level);
-			if (message.Level == LogLevel.Warning)
-			{
-				builder.Append(" (");
-				builder.Append(message.WarningLevel);
-				builder.Append(")");
-			}
-			if (message.Code != NuGetLogCode.Undefined)
-			{
-				builder.Append(" Code ");
-				builder.Append(message.Code);
-			}
-			if (!string.IsNullOrEmpty(message.ProjectPath))
-			{
-				builder.Append(" '");
-				builder.Append(message.ProjectPath);
-				builder.Append("'");
-			}
-			builder.Append(": ");
-			builder.Append(message.Message);
-			Console.WriteLine(builder.ToString());
-		}
-		public override Task LogAsync(ILogMessage message)
-		{
-			this.Log(message);
-			return Task.FromResult<object>(null);
 		}
 	}
 }

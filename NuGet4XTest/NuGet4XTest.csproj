@@ -109,6 +109,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CustomNuGetProject.cs" />
+    <Compile Include="CustomNuGetProjectContext.cs" />
+    <Compile Include="DebugExtensions.cs" />
+    <Compile Include="CustomNuGetLogger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
