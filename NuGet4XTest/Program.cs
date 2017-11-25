@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.Xml.Linq;
 
 using NuGet.Common;
 using NuGet.Protocol.Core.Types;
@@ -17,7 +18,7 @@ using NuGet.Packaging.Core;
 using NuGet.PackageManagement;
 using NuGet.ProjectManagement;
 using NuGet.Resolver;
-using System.Xml.Linq;
+using NuGet.Versioning;
 
 namespace NuGet4XTest
 {
@@ -112,18 +113,74 @@ namespace NuGet4XTest
 				DependencyBehavior.Lowest, 
 				allowPrereleaseVersions, 
 				allowUnlisted, 
-				VersionConstraints.ExactMajor);    
+				VersionConstraints.ExactMajor);
+			UninstallationContext uninstallContext = new UninstallationContext(
+				true,
+				false);
 			INuGetProjectContext projectContext = new CustomNuGetProjectContext();
 			List<SourceRepository> sourceRepositories = new List<SourceRepository>();
 			sourceRepositories.Add(sourceRepository);
 
-			await manager.InstallPackageAsync(
+			Console.WriteLine("Preview for package install...");
+			IEnumerable<NuGetProjectAction> installActions = await manager.PreviewInstallPackageAsync(
 				project,
-				new PackageIdentity("Newtonsoft.Json", new NuGet.Versioning.NuGetVersion(10, 0, 3)), 
-				resolutionContext, 
-				projectContext, 
+				new PackageIdentity("Newtonsoft.Json", new NuGetVersion(10, 0, 2)),
+				resolutionContext,
+				projectContext,
 				sourceRepositories,
 				Enumerable.Empty<SourceRepository>(),
+				CancellationToken.None);
+			Console.WriteLine("Execute package install...");
+			await manager.ExecuteNuGetProjectActionsAsync(
+				project,
+				installActions,
+				projectContext,
+				CancellationToken.None);
+
+			Console.WriteLine("Preview for package update...");
+			IEnumerable<NuGetProjectAction> updateActions = await manager.PreviewUpdatePackagesAsync(
+				new PackageIdentity("Newtonsoft.Json", new NuGetVersion(10, 0, 3)),
+				new[] { project },
+				resolutionContext,
+				projectContext,
+				sourceRepositories,
+				Enumerable.Empty<SourceRepository>(),
+				CancellationToken.None);
+			IEnumerable<NuGetProjectAction> updateActions2 = await manager.PreviewUpdatePackagesAsync(
+				new PackageIdentity("Newtonsoft.Json", new NuGetVersion(10, 0, 2)),
+				new[] { project },
+				resolutionContext,
+				projectContext,
+				sourceRepositories,
+				Enumerable.Empty<SourceRepository>(),
+				CancellationToken.None);
+			IEnumerable<NuGetProjectAction> updateActions3 = await manager.PreviewUpdatePackagesAsync(
+				"Newtonsoft.Json",
+				new[] { project },
+				resolutionContext,
+				projectContext,
+				sourceRepositories,
+				Enumerable.Empty<SourceRepository>(),
+				CancellationToken.None);
+			Console.WriteLine("Execute package update...");
+			await manager.ExecuteNuGetProjectActionsAsync(
+				project,
+				updateActions,
+				projectContext,
+				CancellationToken.None);
+
+			Console.WriteLine("Preview for package uninstall...");
+			IEnumerable<NuGetProjectAction> uninstallActions = await manager.PreviewUninstallPackageAsync(
+				project,
+				new PackageIdentity("Newtonsoft.Json", new NuGetVersion(10, 0, 3)),
+				uninstallContext,
+				projectContext,
+				CancellationToken.None);
+			Console.WriteLine("Execute package uninstall...");
+			await manager.ExecuteNuGetProjectActionsAsync(
+				project,
+				uninstallActions,
+				projectContext,
 				CancellationToken.None);
 
 			Console.WriteLine();
