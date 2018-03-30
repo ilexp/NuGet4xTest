@@ -114,6 +114,8 @@
     <Compile Include="CustomNuGetProjectContext.cs" />
     <Compile Include="DebugExtensions.cs" />
     <Compile Include="CustomNuGetLogger.cs" />
+    <Compile Include="CustomDeleteManager.cs" />
+    <Compile Include="CustomSolutionManager.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

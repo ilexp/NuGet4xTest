@@ -2,18 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Reflection;
-using System.Xml.Linq;
-
-using NuGet.Common;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol;
 using NuGet.Configuration;
 using NuGet.Frameworks;
-using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using NuGet.PackageManagement;
 using NuGet.ProjectManagement;
@@ -99,13 +94,14 @@ namespace NuGet4XTest
 			Console.WriteLine("Installing for target framework {0}...", currentFramework);
 
 			string rootPath = "ProjectRoot";
-			string packagesPath = Path.Combine(rootPath, "Packages");
-			string targetPath = Path.Combine(rootPath, "Target");
+			string targetPath = Path.Combine(rootPath, "Packages");
+			if (!Directory.Exists(targetPath)) Directory.CreateDirectory(targetPath);
 			ISettings settings = new CustomNuGetSettings(rootPath);
 			PackageSourceProvider sourceProvider = new PackageSourceProvider(settings);
 			SourceRepositoryProvider repoProvider = new SourceRepositoryProvider(sourceProvider, resourceProviders);
-			NuGetPackageManager manager = new NuGetPackageManager(repoProvider, settings, packagesPath);
 			CustomNuGetProject project = new CustomNuGetProject(targetPath, currentFramework);
+			CustomSolutionManager solutionManager = new CustomSolutionManager(rootPath, project);
+			NuGetPackageManager manager = new NuGetPackageManager(repoProvider, settings, solutionManager, new CustomDeleteManager());
 
 			bool allowPrereleaseVersions = true;
 			bool allowUnlisted = false;
@@ -140,22 +136,6 @@ namespace NuGet4XTest
 			Console.WriteLine("Preview for package update...");
 			IEnumerable<NuGetProjectAction> updateActions = await manager.PreviewUpdatePackagesAsync(
 				new PackageIdentity("Newtonsoft.Json", new NuGetVersion(10, 0, 3)),
-				new[] { project },
-				resolutionContext,
-				projectContext,
-				sourceRepositories,
-				Enumerable.Empty<SourceRepository>(),
-				CancellationToken.None);
-			IEnumerable<NuGetProjectAction> updateActions2 = await manager.PreviewUpdatePackagesAsync(
-				new PackageIdentity("Newtonsoft.Json", new NuGetVersion(10, 0, 2)),
-				new[] { project },
-				resolutionContext,
-				projectContext,
-				sourceRepositories,
-				Enumerable.Empty<SourceRepository>(),
-				CancellationToken.None);
-			IEnumerable<NuGetProjectAction> updateActions3 = await manager.PreviewUpdatePackagesAsync(
-				"Newtonsoft.Json",
 				new[] { project },
 				resolutionContext,
 				projectContext,

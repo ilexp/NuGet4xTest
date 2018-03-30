@@ -1,23 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Reflection;
-using System.Xml.Linq;
-
-using NuGet.Common;
 using NuGet.Protocol.Core.Types;
-using NuGet.Protocol;
-using NuGet.Configuration;
 using NuGet.Frameworks;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
-using NuGet.PackageManagement;
 using NuGet.ProjectManagement;
-using NuGet.Resolver;
 using NuGet.Versioning;
 
 namespace NuGet4XTest
