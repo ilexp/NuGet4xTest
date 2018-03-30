@@ -36,13 +36,17 @@ namespace NuGet4XTest
 			Console.WriteLine("GetInstalledPackagesAsync");
 
 			List<PackageReference> installedPackages = new List<PackageReference>();
+			if (!Directory.Exists(this.Root)) Directory.CreateDirectory(this.Root);
 			foreach (string packageFolder in Directory.EnumerateDirectories(this.Root))
 			{
 				string packageFolderName = Path.GetFileName(packageFolder);
 				string packageFileName = packageFolderName + ".nupkg";
 				string packageFilePath = Path.Combine(packageFolder, packageFileName);
 				if (!File.Exists(packageFilePath)) continue;
+				if (NuGetVersion.TryParse(packageFolderName, out var version2))
+				{
 
+				}
 				int dotIndex = packageFolderName.Length;
 				int dotCount = 0;
 				while (true)
