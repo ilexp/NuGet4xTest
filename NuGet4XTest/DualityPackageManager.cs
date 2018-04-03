@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using NuGet.Configuration;
 using NuGet.Frameworks;
 using NuGet.PackageManagement;
+using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using NuGet.Protocol;
@@ -19,12 +20,12 @@ namespace NuGet4XTest
 {
 	public class DualityPackageManager
 	{
+		public string PackagesPath => _manager.PackagesFolderNuGetProject.Root;
 		private readonly NuGetPackageManager _manager;
-		private readonly CustomNuGetProject _project;
 		private readonly INuGetProjectContext _projectContext;
 		private readonly List<SourceRepository> _sourceRepositories;
 
-		public DualityPackageManager(string rootPath)
+		public DualityPackageManager(string rootPath, string packagesPath)
 		{
 			DefaultFrameworkNameProvider frameworkNameProvider = new DefaultFrameworkNameProvider();
 			string testAppFrameworkName = Assembly.GetExecutingAssembly().GetCustomAttributes(true)
@@ -40,17 +41,16 @@ namespace NuGet4XTest
 			resourceProviders.AddRange(Repository.Provider.GetCoreV3());
 
 			_projectContext = new CustomNuGetProjectContext();
-			string targetPath = Path.Combine(rootPath, "Packages");
+            
 			ISettings settings = new CustomNuGetSettings(rootPath);
 			PackageSourceProvider sourceProvider = new PackageSourceProvider(settings);
 			SourceRepositoryProvider repoProvider = new SourceRepositoryProvider(sourceProvider, resourceProviders);
-			_project = new CustomNuGetProject(targetPath, currentFramework);
-			CustomSolutionManager solutionManager = new CustomSolutionManager(rootPath, _project);
-			_manager = new NuGetPackageManager(repoProvider, settings, solutionManager, new CustomDeleteManager());
 
-			PackageSource packageSource = new PackageSource("https://api.nuget.org/v3/index.json");
-			SourceRepository sourceRepository = new SourceRepository(packageSource, resourceProviders);
-			_sourceRepositories = new List<SourceRepository> { sourceRepository };
+            var project = new CustomNuGetProject(Path.Combine(rootPath, packagesPath), currentFramework);
+			CustomSolutionManager solutionManager = new CustomSolutionManager(rootPath, project);
+			_manager = new NuGetPackageManager(repoProvider, settings, solutionManager, new CustomDeleteManager());
+			_manager.PackagesFolderNuGetProject = project;
+		    _sourceRepositories = repoProvider.GetRepositories().ToList();
 		}
 
 		/// <summary>
@@ -68,9 +68,8 @@ namespace NuGet4XTest
 				allowPrereleaseVersions,
 				allowUnlisted,
 				VersionConstraints.ExactMajor);
-
 			IEnumerable<NuGetProjectAction> installActions = await _manager.PreviewInstallPackageAsync(
-				_project,
+			    _manager.PackagesFolderNuGetProject,
 				new PackageIdentity(packageId, version),
 				resolutionContext,
 				_projectContext,
@@ -79,15 +78,16 @@ namespace NuGet4XTest
 				CancellationToken.None);
 
 			await _manager.ExecuteNuGetProjectActionsAsync(
-				_project,
+			    _manager.PackagesFolderNuGetProject,
 				installActions,
 				_projectContext,
 				CancellationToken.None);
 		}
 
-		public async Task<IEnumerable<PackageIdentity>> Foo()
+		public async Task<IEnumerable<PackageIdentity>> GetInstalledPackages()
 		{
-			return await _manager.GetInstalledPackagesInDependencyOrder(_project, CancellationToken.None);
+			var packageReferences = await _manager.PackagesFolderNuGetProject.GetInstalledPackagesAsync(CancellationToken.None);
+			return packageReferences.Select(x => x.PackageIdentity);
 		}
 
 		/// <summary>
@@ -104,14 +104,14 @@ namespace NuGet4XTest
 
 			IEnumerable<NuGetProjectAction> updateActions = await _manager.PreviewUpdatePackagesAsync(
 				new PackageIdentity(packageId, version), 
-				new[] { _project },
+				new[] { _manager.PackagesFolderNuGetProject },
 				resolutionContext,
 				_projectContext,
 				_sourceRepositories,
 				Enumerable.Empty<SourceRepository>(),
 				CancellationToken.None);
 
-			await _manager.ExecuteNuGetProjectActionsAsync(_project, updateActions, _projectContext, CancellationToken.None);
+			await _manager.ExecuteNuGetProjectActionsAsync(_manager.PackagesFolderNuGetProject, updateActions, _projectContext, CancellationToken.None);
 		}
 
 		public async Task UninstallPackage(string packageId)
@@ -119,14 +119,14 @@ namespace NuGet4XTest
 			UninstallationContext uninstallContext = new UninstallationContext(true, false);
 
 			IEnumerable<NuGetProjectAction> uninstallActions = await _manager.PreviewUninstallPackageAsync(
-				_project,
+			    _manager.PackagesFolderNuGetProject,
 				packageId,
 				uninstallContext,
 				_projectContext,
 				CancellationToken.None);
 
 			await _manager.ExecuteNuGetProjectActionsAsync(
-				_project,
+			    _manager.PackagesFolderNuGetProject,
 				uninstallActions,
 				_projectContext,
 				CancellationToken.None);

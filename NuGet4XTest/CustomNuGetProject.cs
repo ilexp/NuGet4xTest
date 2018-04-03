@@ -16,7 +16,7 @@ namespace NuGet4XTest
 	{
 		private NuGetFramework framework;
 
-		public CustomNuGetProject(string path, NuGetFramework framework) : base(path, new PackagePathResolver(path), framework)
+		public CustomNuGetProject(string root, NuGetFramework framework) : base(root, new PackagePathResolver(root), framework)
 		{
 			this.framework = framework;
 		}
@@ -39,37 +39,28 @@ namespace NuGet4XTest
 			if (!Directory.Exists(this.Root)) Directory.CreateDirectory(this.Root);
 			foreach (string packageFolder in Directory.EnumerateDirectories(this.Root))
 			{
-				string packageFolderName = Path.GetFileName(packageFolder);
-				string packageFileName = packageFolderName + ".nupkg";
-				string packageFilePath = Path.Combine(packageFolder, packageFileName);
-				if (!File.Exists(packageFilePath)) continue;
-				if (NuGetVersion.TryParse(packageFolderName, out var version2))
-				{
+			    string packageFolderName = Path.GetFileName(packageFolder);
+                var versionStartIndex = packageFolderName.Length - 1;
+			    for (var i = packageFolderName.Length - 1; i >= 0; i--)
+			    {
+			        if (char.IsDigit(packageFolderName[i]) || packageFolderName[i] == '.')
+			        {
+			            versionStartIndex = i;
+                    }
+			        else
+			        {
+			            break;
+			        }
+			    }
 
-				}
-				int dotIndex = packageFolderName.Length;
-				int dotCount = 0;
-				while (true)
-				{
-					dotIndex = packageFolderName.LastIndexOf('.', dotIndex - 1);
-					if (dotIndex == -1) break;
+			    var versionString = packageFolderName.Substring(versionStartIndex + 1);
+                var idString = packageFolderName.Substring(0, versionStartIndex);
 
-					dotCount++;
-					if (dotCount < 3) continue;
+			    if (!NuGetVersion.TryParse(versionString, out var version))
+			        continue;
 
-					string potentialVersionString = packageFolderName.Substring(
-						dotIndex + 1, 
-						packageFolderName.Length - dotIndex - 1);
-					NuGetVersion version;
-					if (!NuGetVersion.TryParse(potentialVersionString, out version))
-						continue;
-
-					string packageName = packageFolderName.Remove(dotIndex);
-					PackageIdentity identity = new PackageIdentity(packageName, version);
-
-					installedPackages.Add(new PackageReference(identity, this.framework));
-					break;
-				}
+			    PackageIdentity identity = new PackageIdentity(idString, version);
+			    installedPackages.Add(new PackageReference(identity, this.framework));
 			}
 
 			foreach (PackageReference item in installedPackages)
@@ -77,7 +68,7 @@ namespace NuGet4XTest
 				Console.WriteLine("- {0}", item);
 			}
 
-			return Task.FromResult(installedPackages as IEnumerable<PackageReference>);
+			return Task.FromResult((IEnumerable<PackageReference>) installedPackages);
 		}
 		public override Task<bool> InstallPackageAsync(PackageIdentity packageIdentity, DownloadResourceResult downloadResourceResult, INuGetProjectContext nuGetProjectContext, CancellationToken token)
 		{

@@ -27,11 +27,10 @@ namespace NuGet4XTest
 		}
 		private static async Task MainAsync(string[] args)
 		{
-			var packageManager = new DualityPackageManager("ProjectRoot");
-			var foo = packageManager.Foo().Result.ToArray();
+			var packageManager = new DualityPackageManager("ProjectRoot", "Packages");
 			await packageManager.InstallPackage("Newtonsoft.Json", new NuGetVersion(10, 0, 1));
-			await packageManager.InstallPackage("Pathfindax", new NuGetVersion(2, 1, 1, 419));
-			await packageManager.UpdatePackage("Newtonsoft.Json");
+			//await packageManager.InstallPackage("AdamsLair.Duality.Primitives", new NuGetVersion(2, 0, 4));
+			//await packageManager.UpdatePackage("Newtonsoft.Json");
 			await packageManager.UninstallPackage("Newtonsoft.Json");
 		}
 	}
