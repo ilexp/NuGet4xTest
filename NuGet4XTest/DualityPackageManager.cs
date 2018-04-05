@@ -53,14 +53,14 @@ namespace NuGet4XTest
 			_sourceRepositories = repoProvider.GetRepositories().ToList();
 		}
 
-		public async Task<IEnumerable<IPackageSearchMetadata>> Search(string searchTerm = "Duality", bool prerelease = false)
+		public async Task<IEnumerable<IPackageSearchMetadata>> Search(string searchTerm = "tags:Duality, Plugin", bool prerelease = false)
 		{
 			var filter = new SearchFilter(prerelease);
 			foreach (var source in _sourceRepositories)
 			{
 				var dependencyInfoResource = await source.GetResourceAsync<PackageSearchResource>();
 				var result = await dependencyInfoResource.SearchAsync(searchTerm, filter, 0, int.MaxValue, new CustomNuGetLogger(), CancellationToken.None);
-				return result.Where(x => x.Tags.Contains("Duality") && x.Tags.Contains("Plugin"));
+			    return result;
 			}
 			return Enumerable.Empty<IPackageSearchMetadata>();
 		}

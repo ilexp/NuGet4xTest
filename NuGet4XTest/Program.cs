@@ -28,8 +28,8 @@ namespace NuGet4XTest
 		private static async Task MainAsync(string[] args)
 		{
 			var packageManager = new DualityPackageManager("ProjectRoot", "Packages");
-			var f =  await packageManager.Search();
-			var versions = await f.ToArray()[0].GetVersionsAsync();
+			var f =  (await packageManager.Search()).ToArray();
+			var versions = (await f.ToArray()[0].GetVersionsAsync()).ToArray();
 			var package = f.FirstOrDefault();
 			await packageManager.InstallPackage(package.Identity.Id, package.Identity.Version);
 
