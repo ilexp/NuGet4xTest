@@ -4,7 +4,7 @@ using NuGet.PackageManagement;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	public class CustomDeleteManager : IDeleteOnRestartManager
 	{

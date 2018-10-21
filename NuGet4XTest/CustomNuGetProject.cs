@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Protocol.Core.Types;
 using NuGet.Frameworks;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
+using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	public class CustomNuGetProject : FolderNuGetProject
 	{

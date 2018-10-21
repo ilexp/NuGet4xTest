@@ -1,28 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Reflection;
-using NuGet.Protocol.Core.Types;
-using NuGet.Protocol;
-using NuGet.Configuration;
-using NuGet.Frameworks;
 using NuGet.Packaging.Core;
-using NuGet.PackageManagement;
-using NuGet.ProjectManagement;
-using NuGet.Resolver;
 using NuGet.Versioning;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	internal class Program
 	{
-		public static void Main(string[] args)
+		public static async Task Main(string[] args)
 		{
 			Task mainTask = MainAsync(args);
-			mainTask.Wait();
+			await mainTask;
 			Console.ReadLine();
 		}
 		private static async Task MainAsync(string[] args)
@@ -31,10 +20,15 @@ namespace NuGet4XTest
 			var f =  (await packageManager.Search()).ToArray();
 			var versions = (await f.ToArray()[0].GetVersionsAsync()).ToArray();
 			var package = f.FirstOrDefault();
-			await packageManager.InstallPackage(package.Identity.Id, package.Identity.Version);
+			//await packageManager.InstallPackage(package.Identity.Id, package.Identity.Version);
 
+			//var package2 = new PackageIdentity("Singularity.Duality.core", new NuGetVersion(0, 1, 3, 68));
+			//await packageManager.InstallPackage(package2.Id, package2.Version);
+			var result = await packageManager.GetInstalledPackageIdentities();
+			var m = await packageManager.GetInstalledPackages();
 			//await packageManager.InstallPackage("Newtonsoft.Json", new NuGetVersion(10, 0, 1));
 			//await packageManager.InstallPackage("AdamsLair.Duality.Primitives", new NuGetVersion(2, 0, 4));
+
 			//await packageManager.UpdatePackage("Newtonsoft.Json");
 			//await packageManager.UninstallPackage("Newtonsoft.Json");
 		}

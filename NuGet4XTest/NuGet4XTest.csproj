@@ -7,7 +7,7 @@
     <ProjectGuid>{2E14B735-F77F-419B-BADF-B0195E9D65A3}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NuGet4XTest</RootNamespace>
+    <RootNamespace>Duality.Editor.PackageManagement</RootNamespace>
     <AssemblyName>NuGet4XTest</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -112,7 +113,6 @@
     <Compile Include="CustomNuGetSettings.cs" />
     <Compile Include="CustomNuGetProject.cs" />
     <Compile Include="CustomNuGetProjectContext.cs" />
-    <Compile Include="DebugExtensions.cs" />
     <Compile Include="CustomNuGetLogger.cs" />
     <Compile Include="CustomDeleteManager.cs" />
     <Compile Include="CustomSolutionManager.cs" />

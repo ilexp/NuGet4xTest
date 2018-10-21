@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using NuGet.Configuration;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	public class CustomNuGetSettings : ISettings
 	{

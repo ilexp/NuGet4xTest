@@ -5,11 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Common;
 using NuGet.Configuration;
 using NuGet.Frameworks;
 using NuGet.PackageManagement;
-using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using NuGet.Protocol;
@@ -17,7 +15,7 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
 using NuGet.Versioning;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	public class DualityPackageManager
 	{
@@ -25,6 +23,7 @@ namespace NuGet4XTest
 		private readonly NuGetPackageManager _manager;
 		private readonly INuGetProjectContext _projectContext;
 		private readonly List<SourceRepository> _sourceRepositories;
+		private readonly SourceRepository _localRepository;
 
 		public DualityPackageManager(string rootPath, string packagesPath)
 		{
@@ -43,10 +42,16 @@ namespace NuGet4XTest
 			_projectContext = new CustomNuGetProjectContext();
 
 			ISettings settings = new CustomNuGetSettings(rootPath);
+
+
+
 			PackageSourceProvider sourceProvider = new PackageSourceProvider(settings);
 			SourceRepositoryProvider repoProvider = new SourceRepositoryProvider(sourceProvider, resourceProviders);
 
 			var project = new CustomNuGetProject(Path.Combine(rootPath, packagesPath), currentFramework);
+			var localSource = new PackageSource(Path.GetFullPath(project.Root));
+			_localRepository = new SourceRepository(localSource, resourceProviders);
+
 			CustomSolutionManager solutionManager = new CustomSolutionManager(rootPath, project);
 			_manager = new NuGetPackageManager(repoProvider, settings, solutionManager, new CustomDeleteManager());
 			_manager.PackagesFolderNuGetProject = project;
@@ -96,7 +101,19 @@ namespace NuGet4XTest
 				CancellationToken.None);
 		}
 
-		public async Task<IEnumerable<PackageIdentity>> GetInstalledPackages()
+		public async Task<IPackageSearchMetadata> GetInstalledPackage(PackageIdentity packageIdentity)
+		{
+			var dependencyInfoResource = await _localRepository.GetResourceAsync<PackageMetadataResource>();
+			return await dependencyInfoResource.GetMetadataAsync(packageIdentity, new CustomNuGetLogger(), CancellationToken.None);
+		}
+
+		public async Task<IPackageSearchMetadata[]> GetInstalledPackages()
+		{
+			var packageIdentities = await GetInstalledPackageIdentities();
+			return await Task.WhenAll(packageIdentities.Select(GetInstalledPackage));
+		}
+
+		public async Task<IEnumerable<PackageIdentity>> GetInstalledPackageIdentities()
 		{
 			var packageReferences = await _manager.PackagesFolderNuGetProject.GetInstalledPackagesAsync(CancellationToken.None);
 			return packageReferences.Select(x => x.PackageIdentity);

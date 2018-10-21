@@ -3,7 +3,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NuGet.Common;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	public class CustomNuGetLogger : LoggerBase
 	{

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using NuGet.PackageManagement;
 using NuGet.ProjectManagement;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	public class CustomSolutionManager : ISolutionManager
 	{

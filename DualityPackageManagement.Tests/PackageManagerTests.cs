@@ -1,10 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Duality.Editor.PackageManagement;
 using NuGet.Versioning;
-using NuGet4XTest;
 using NUnit.Framework;
 
 namespace DualityPackageManagement.Tests
@@ -49,7 +48,7 @@ namespace DualityPackageManagement.Tests
         public async Task GetInstalledPackage(string packageId, NuGetVersion version)
         {
             await _dualityPackageManager.InstallPackage(packageId, version);
-            var installedPackages = await _dualityPackageManager.GetInstalledPackages();
+            var installedPackages = await _dualityPackageManager.GetInstalledPackageIdentities();
 
             var installedPackage = installedPackages.FirstOrDefault(x => x.Id == packageId);
             if (installedPackage == null) Assert.Fail("No installed package found with id {0}", packageId);

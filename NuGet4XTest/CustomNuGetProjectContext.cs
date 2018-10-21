@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Xml.Linq;
 using NuGet.Packaging;
 using NuGet.ProjectManagement;
-using System.Xml.Linq;
 
-namespace NuGet4XTest
+namespace Duality.Editor.PackageManagement
 {
 	public class CustomNuGetProjectContext : INuGetProjectContext
 	{
