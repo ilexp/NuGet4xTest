@@ -19,7 +19,11 @@ namespace Duality.Editor.PackageManagement
 {
 	public class DualityPackageManager
 	{
-		public string PackagesPath => _manager.PackagesFolderNuGetProject.Root;
+		public string PackagesPath
+		{
+			get { return _manager.PackagesFolderNuGetProject.Root; }
+		}
+
 		private readonly NuGetPackageManager _manager;
 		private readonly INuGetProjectContext _projectContext;
 		private readonly List<SourceRepository> _sourceRepositories;
@@ -58,16 +62,19 @@ namespace Duality.Editor.PackageManagement
 			_sourceRepositories = repoProvider.GetRepositories().ToList();
 		}
 
-		public async Task<IEnumerable<IPackageSearchMetadata>> Search(string searchTerm = "tags:Duality, Plugin", bool prerelease = false)
+		public IEnumerable<PackageMetadata> Search(string searchTerm = "tags:Duality, Plugin", bool prerelease = false)
 		{
-			var filter = new SearchFilter(prerelease);
-			foreach (var source in _sourceRepositories)
+			return Task.Run(() =>
 			{
-				var dependencyInfoResource = await source.GetResourceAsync<PackageSearchResource>();
-				var result = await dependencyInfoResource.SearchAsync(searchTerm, filter, 0, int.MaxValue, new CustomNuGetLogger(), CancellationToken.None);
-			    return result;
-			}
-			return Enumerable.Empty<IPackageSearchMetadata>();
+				var filter = new SearchFilter(prerelease);
+				foreach (var source in _sourceRepositories)
+				{
+					var dependencyInfoResource = source.GetResourceAsync<PackageSearchResource>().GetAwaiter().GetResult();
+					var result = dependencyInfoResource.SearchAsync(searchTerm, filter, 0, int.MaxValue, new CustomNuGetLogger(), CancellationToken.None).GetAwaiter().GetResult();
+					return result.Select(x => new PackageMetadata(x));
+				}
+				return Enumerable.Empty<PackageMetadata>();
+			}).GetAwaiter().GetResult();
 		}
 
 		/// <summary>
@@ -78,45 +85,57 @@ namespace Duality.Editor.PackageManagement
 		/// <param name="allowPrereleaseVersions"></param>
 		/// <param name="allowUnlisted"></param>
 		/// <returns></returns>
-		public async Task InstallPackage(string packageId, NuGetVersion version, bool allowPrereleaseVersions = true, bool allowUnlisted = false)
+		public void InstallPackage(string packageId, NuGetVersion version, bool allowPrereleaseVersions = true, bool allowUnlisted = false)
 		{
-			ResolutionContext resolutionContext = new ResolutionContext(
-				DependencyBehavior.Lowest,
-				allowPrereleaseVersions,
-				allowUnlisted,
-				VersionConstraints.ExactMajor);
-			IEnumerable<NuGetProjectAction> installActions = await _manager.PreviewInstallPackageAsync(
-				_manager.PackagesFolderNuGetProject,
-				new PackageIdentity(packageId, version),
-				resolutionContext,
-				_projectContext,
-				_sourceRepositories,
-				Enumerable.Empty<SourceRepository>(),
-				CancellationToken.None);
+			Task.Run(() =>
+			{
+				ResolutionContext resolutionContext = new ResolutionContext(
+					DependencyBehavior.Lowest,
+					allowPrereleaseVersions,
+					allowUnlisted,
+					VersionConstraints.ExactMajor);
+				IEnumerable<NuGetProjectAction> installActions = _manager.PreviewInstallPackageAsync(
+					_manager.PackagesFolderNuGetProject,
+					new PackageIdentity(packageId, version),
+					resolutionContext,
+					_projectContext,
+					_sourceRepositories,
+					Enumerable.Empty<SourceRepository>(),
+					CancellationToken.None).GetAwaiter().GetResult();
 
-			await _manager.ExecuteNuGetProjectActionsAsync(
-				_manager.PackagesFolderNuGetProject,
-				installActions,
-				_projectContext,
-				CancellationToken.None);
+				_manager.ExecuteNuGetProjectActionsAsync(
+				   _manager.PackagesFolderNuGetProject,
+				   installActions,
+				   _projectContext,
+				   CancellationToken.None).GetAwaiter().GetResult();
+			}).GetAwaiter().GetResult();
 		}
 
-		public async Task<IPackageSearchMetadata> GetInstalledPackage(PackageIdentity packageIdentity)
+		public PackageMetadata GetInstalledPackage(PackageIdentity packageIdentity)
 		{
-			var dependencyInfoResource = await _localRepository.GetResourceAsync<PackageMetadataResource>();
-			return await dependencyInfoResource.GetMetadataAsync(packageIdentity, new CustomNuGetLogger(), CancellationToken.None);
+			return new PackageMetadata(Task.Run(() =>
+			  {
+				  var dependencyInfoResource = _localRepository.GetResourceAsync<PackageMetadataResource>().GetAwaiter().GetResult();
+				  return dependencyInfoResource.GetMetadataAsync(packageIdentity, new CustomNuGetLogger(), CancellationToken.None).GetAwaiter().GetResult();
+			  }).GetAwaiter().GetResult());
 		}
 
-		public async Task<IPackageSearchMetadata[]> GetInstalledPackages()
+		public PackageMetadata[] GetInstalledPackages()
 		{
-			var packageIdentities = await GetInstalledPackageIdentities();
-			return await Task.WhenAll(packageIdentities.Select(GetInstalledPackage));
+			return Task.Run(() =>
+			{
+				var packageIdentities = GetInstalledPackageIdentities();
+				return packageIdentities.Select(GetInstalledPackage).ToArray();
+			}).GetAwaiter().GetResult();
 		}
 
-		public async Task<IEnumerable<PackageIdentity>> GetInstalledPackageIdentities()
+		public IEnumerable<PackageIdentity> GetInstalledPackageIdentities()
 		{
-			var packageReferences = await _manager.PackagesFolderNuGetProject.GetInstalledPackagesAsync(CancellationToken.None);
-			return packageReferences.Select(x => x.PackageIdentity);
+			return Task.Run(() =>
+			{
+				var packageReferences = _manager.PackagesFolderNuGetProject.GetInstalledPackagesAsync(CancellationToken.None).GetAwaiter().GetResult();
+				return packageReferences.Select(x => x.PackageIdentity);
+			}).GetAwaiter().GetResult();
 		}
 
 		/// <summary>
@@ -127,38 +146,44 @@ namespace Duality.Editor.PackageManagement
 		/// <param name="allowPrereleaseVersions"></param>
 		/// <param name="allowUnlisted"></param>
 		/// <returns></returns>
-		public async Task UpdatePackage(string packageId, NuGetVersion version = null, bool allowPrereleaseVersions = true, bool allowUnlisted = false)
+		public void UpdatePackage(string packageId, NuGetVersion version = null, bool allowPrereleaseVersions = true, bool allowUnlisted = false)
 		{
-			ResolutionContext resolutionContext = new ResolutionContext(DependencyBehavior.Lowest, allowPrereleaseVersions, allowUnlisted, VersionConstraints.ExactMajor);
+			Task.Run(() =>
+			{
+				ResolutionContext resolutionContext = new ResolutionContext(DependencyBehavior.Lowest, allowPrereleaseVersions, allowUnlisted, VersionConstraints.ExactMajor);
 
-			IEnumerable<NuGetProjectAction> updateActions = await _manager.PreviewUpdatePackagesAsync(
-				new PackageIdentity(packageId, version),
-				new[] { _manager.PackagesFolderNuGetProject },
-				resolutionContext,
-				_projectContext,
-				_sourceRepositories,
-				Enumerable.Empty<SourceRepository>(),
-				CancellationToken.None);
+				IEnumerable<NuGetProjectAction> updateActions = _manager.PreviewUpdatePackagesAsync(
+					new PackageIdentity(packageId, version),
+					new[] { _manager.PackagesFolderNuGetProject },
+					resolutionContext,
+					_projectContext,
+					_sourceRepositories,
+					Enumerable.Empty<SourceRepository>(),
+					CancellationToken.None).GetAwaiter().GetResult();
 
-			await _manager.ExecuteNuGetProjectActionsAsync(_manager.PackagesFolderNuGetProject, updateActions, _projectContext, CancellationToken.None);
+				_manager.ExecuteNuGetProjectActionsAsync(_manager.PackagesFolderNuGetProject, updateActions, _projectContext, CancellationToken.None).GetAwaiter().GetResult();
+			});
 		}
 
-		public async Task UninstallPackage(string packageId)
+		public void UninstallPackage(string packageId)
 		{
-			UninstallationContext uninstallContext = new UninstallationContext(true, false);
+			Task.Run(() =>
+			{
+				UninstallationContext uninstallContext = new UninstallationContext(true, false);
 
-			IEnumerable<NuGetProjectAction> uninstallActions = await _manager.PreviewUninstallPackageAsync(
-				_manager.PackagesFolderNuGetProject,
-				packageId,
-				uninstallContext,
-				_projectContext,
-				CancellationToken.None);
+				IEnumerable<NuGetProjectAction> uninstallActions = _manager.PreviewUninstallPackageAsync(
+					_manager.PackagesFolderNuGetProject,
+					packageId,
+					uninstallContext,
+					_projectContext,
+					CancellationToken.None).GetAwaiter().GetResult();
 
-			await _manager.ExecuteNuGetProjectActionsAsync(
-				_manager.PackagesFolderNuGetProject,
-				uninstallActions,
-				_projectContext,
-				CancellationToken.None);
+				_manager.ExecuteNuGetProjectActionsAsync(
+					_manager.PackagesFolderNuGetProject,
+					uninstallActions,
+					_projectContext,
+					CancellationToken.None).GetAwaiter().GetResult();
+			}).GetAwaiter().GetResult();
 		}
 	}
 }

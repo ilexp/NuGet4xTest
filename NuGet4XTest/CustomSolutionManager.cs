@@ -9,11 +9,25 @@ namespace Duality.Editor.PackageManagement
 {
 	public class CustomSolutionManager : ISolutionManager
 	{
-		public List<NuGetProject> NuGetProjects { get; set; } = new List<NuGetProject>();
+		public List<NuGetProject> NuGetProjects { get; private set; }
+		public string SolutionDirectory { get; private set; }
+		public INuGetProjectContext NuGetProjectContext { get; set; }
+		public event EventHandler SolutionOpening;
+		public event EventHandler SolutionOpened;
+		public event EventHandler SolutionClosing;
+		public event EventHandler SolutionClosed;
+		public event EventHandler<NuGetEventArgs<string>> AfterNuGetCacheUpdated;
+		public event EventHandler<NuGetProjectEventArgs> NuGetProjectAdded;
+		public event EventHandler<NuGetProjectEventArgs> NuGetProjectRemoved;
+		public event EventHandler<NuGetProjectEventArgs> NuGetProjectRenamed;
+		public event EventHandler<NuGetProjectEventArgs> NuGetProjectUpdated;
+		public event EventHandler<NuGetProjectEventArgs> AfterNuGetProjectRenamed;
+		public event EventHandler<ActionsExecutedEventArgs> ActionsExecuted;
 
 		public CustomSolutionManager(string solutionPath, CustomNuGetProject customNuGetProject)
 		{
 			SolutionDirectory = solutionPath;
+			NuGetProjects = new List<NuGetProject>();
 			NuGetProjects.Add(customNuGetProject);
 
 		}
@@ -61,19 +75,5 @@ namespace Duality.Editor.PackageManagement
 	            ActionsExecuted(this, new ActionsExecutedEventArgs(actions));
 	        }
 	    }
-
-        public string SolutionDirectory { get; }
-		public INuGetProjectContext NuGetProjectContext { get; set; }
-		public event EventHandler SolutionOpening;
-		public event EventHandler SolutionOpened;
-		public event EventHandler SolutionClosing;
-		public event EventHandler SolutionClosed;
-		public event EventHandler<NuGetEventArgs<string>> AfterNuGetCacheUpdated;
-		public event EventHandler<NuGetProjectEventArgs> NuGetProjectAdded;
-		public event EventHandler<NuGetProjectEventArgs> NuGetProjectRemoved;
-		public event EventHandler<NuGetProjectEventArgs> NuGetProjectRenamed;
-		public event EventHandler<NuGetProjectEventArgs> NuGetProjectUpdated;
-		public event EventHandler<NuGetProjectEventArgs> AfterNuGetProjectRenamed;
-		public event EventHandler<ActionsExecutedEventArgs> ActionsExecuted;
 	}
 }

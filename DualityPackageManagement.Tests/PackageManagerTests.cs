@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Duality.Editor.PackageManagement;
 using NuGet.Versioning;
 using NUnit.Framework;
@@ -33,10 +32,10 @@ namespace DualityPackageManagement.Tests
         }
 
 
-        [Test, TestCaseSource(nameof(TestCases))]
-        public async Task InstallPackage(string packageId, NuGetVersion version)
+        [Test, TestCaseSource("TestCases")]
+        public void InstallPackage(string packageId, NuGetVersion version)
         {
-            await _dualityPackageManager.InstallPackage(packageId, version);
+             _dualityPackageManager.InstallPackage(packageId, version);
 
             var installedPackagesInFolder = Directory.EnumerateDirectories(_dualityPackageManager.PackagesPath).ToArray();
             var installedPackageInFolder = installedPackagesInFolder.FirstOrDefault(x => x.Contains(packageId));
@@ -44,11 +43,11 @@ namespace DualityPackageManagement.Tests
             Assert.IsTrue(installedPackageInFolder.Contains(version.ToString()), "No installed package found with version {0}", version);
         }
 
-        [Test, TestCaseSource(nameof(TestCases))]
-        public async Task GetInstalledPackage(string packageId, NuGetVersion version)
+        [Test, TestCaseSource("TestCases")]
+        public void GetInstalledPackage(string packageId, NuGetVersion version)
         {
-            await _dualityPackageManager.InstallPackage(packageId, version);
-            var installedPackages = await _dualityPackageManager.GetInstalledPackageIdentities();
+            _dualityPackageManager.InstallPackage(packageId, version);
+            var installedPackages = _dualityPackageManager.GetInstalledPackageIdentities();
 
             var installedPackage = installedPackages.FirstOrDefault(x => x.Id == packageId);
             if (installedPackage == null) Assert.Fail("No installed package found with id {0}", packageId);

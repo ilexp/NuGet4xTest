@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Frameworks;
@@ -57,7 +56,8 @@ namespace Duality.Editor.PackageManagement
 			    var versionString = packageFolderName.Substring(versionStartIndex + 1);
                 var idString = packageFolderName.Substring(0, versionStartIndex);
 
-			    if (!NuGetVersion.TryParse(versionString, out var version))
+				NuGetVersion version;
+				if (!NuGetVersion.TryParse(versionString, out version))
 			        continue;
 
 			    PackageIdentity identity = new PackageIdentity(idString, version);
