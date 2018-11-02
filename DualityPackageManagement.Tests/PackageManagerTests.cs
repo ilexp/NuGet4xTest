@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using Duality.Editor.PackageManagement;
+using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using NUnit.Framework;
 
@@ -22,7 +23,15 @@ namespace DualityPackageManagement.Tests
                 Directory.Delete(_dualityPackageManager.PackagesPath, true);
         }
 
-        public static IEnumerable<TestCaseData> TestCases
+	    [TearDown]
+	    public void Cleanup()
+	    {
+		    _dualityPackageManager = new DualityPackageManager(_rootPath, _packagesPath);
+		    if (Directory.Exists(_dualityPackageManager.PackagesPath))
+			    Directory.Delete(_dualityPackageManager.PackagesPath, true);
+	    }
+
+		public static IEnumerable<TestCaseData> InstallTestCases
         {
             get
             {
@@ -31,8 +40,17 @@ namespace DualityPackageManagement.Tests
             }
         }
 
+	    public static IEnumerable<TestCaseData> UpdateTestCases
+	    {
+		    get
+		    {
+			    yield return new TestCaseData(new PackageIdentity("Newtonsoft.Json", new NuGetVersion(9, 0, 1)), new NuGetVersion(10, 0, 2));
+			    yield return new TestCaseData(new PackageIdentity("Pathfindax", new NuGetVersion(2, 2, 0, 479)), new NuGetVersion(2, 2, 2, 603));
+		    }
+	    }
 
-        [Test, TestCaseSource("TestCases")]
+
+		[Test, TestCaseSource("InstallTestCases")]
         public void InstallPackage(string packageId, NuGetVersion version)
         {
              _dualityPackageManager.InstallPackage(packageId, version);
@@ -43,7 +61,19 @@ namespace DualityPackageManagement.Tests
             Assert.IsTrue(installedPackageInFolder.Contains(version.ToString()), "No installed package found with version {0}", version);
         }
 
-        [Test, TestCaseSource("TestCases")]
+	    [Test, TestCaseSource("UpdateTestCases")]
+	    public void UpdatePackage(PackageIdentity packageIdentity, NuGetVersion versionToUpdateTo)
+	    {			
+		    _dualityPackageManager.InstallPackage(packageIdentity.Id, packageIdentity.Version);
+			_dualityPackageManager.UpdatePackage(packageIdentity.Id, versionToUpdateTo);
+
+		    var installedPackagesInFolder = Directory.EnumerateDirectories(_dualityPackageManager.PackagesPath).ToArray();
+		    var installedPackageInFolder = installedPackagesInFolder.FirstOrDefault(x => x.Contains(packageIdentity.Id) && x.Contains(versionToUpdateTo.ToString()));
+		    if (installedPackageInFolder == null) Assert.Fail("No installed package found with id {0}", packageIdentity.Id);
+		    Assert.IsTrue(installedPackageInFolder.Contains(versionToUpdateTo.ToString()), "No installed package found with version {0}", versionToUpdateTo);
+	    }
+
+		[Test, TestCaseSource("InstallTestCases")]
         public void GetInstalledPackage(string packageId, NuGetVersion version)
         {
             _dualityPackageManager.InstallPackage(packageId, version);

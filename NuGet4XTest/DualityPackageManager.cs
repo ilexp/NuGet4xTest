@@ -57,6 +57,7 @@ namespace Duality.Editor.PackageManagement
 			_localRepository = new SourceRepository(localSource, resourceProviders);
 
 			CustomSolutionManager solutionManager = new CustomSolutionManager(rootPath, project);
+			//_manager = new NuGetPackageManager(repoProvider, settings, rootPath);
 			_manager = new NuGetPackageManager(repoProvider, settings, solutionManager, new CustomDeleteManager());
 			_manager.PackagesFolderNuGetProject = project;
 			_sourceRepositories = repoProvider.GetRepositories().ToList();
@@ -74,40 +75,6 @@ namespace Duality.Editor.PackageManagement
 					return result.Select(x => new PackageMetadata(x));
 				}
 				return Enumerable.Empty<PackageMetadata>();
-			}).GetAwaiter().GetResult();
-		}
-
-		/// <summary>
-		/// Installs a package
-		/// </summary>
-		/// <param name="packageId">The id of the package</param>
-		/// <param name="version">The required version. If not specified the latest version will be used</param>
-		/// <param name="allowPrereleaseVersions"></param>
-		/// <param name="allowUnlisted"></param>
-		/// <returns></returns>
-		public void InstallPackage(string packageId, NuGetVersion version, bool allowPrereleaseVersions = true, bool allowUnlisted = false)
-		{
-			Task.Run(() =>
-			{
-				ResolutionContext resolutionContext = new ResolutionContext(
-					DependencyBehavior.Lowest,
-					allowPrereleaseVersions,
-					allowUnlisted,
-					VersionConstraints.ExactMajor);
-				IEnumerable<NuGetProjectAction> installActions = _manager.PreviewInstallPackageAsync(
-					_manager.PackagesFolderNuGetProject,
-					new PackageIdentity(packageId, version),
-					resolutionContext,
-					_projectContext,
-					_sourceRepositories,
-					Enumerable.Empty<SourceRepository>(),
-					CancellationToken.None).GetAwaiter().GetResult();
-
-				_manager.ExecuteNuGetProjectActionsAsync(
-				   _manager.PackagesFolderNuGetProject,
-				   installActions,
-				   _projectContext,
-				   CancellationToken.None).GetAwaiter().GetResult();
 			}).GetAwaiter().GetResult();
 		}
 
@@ -139,6 +106,40 @@ namespace Duality.Editor.PackageManagement
 		}
 
 		/// <summary>
+		/// Installs a package
+		/// </summary>
+		/// <param name="packageId">The id of the package</param>
+		/// <param name="version">The required version. If not specified the latest version will be used</param>
+		/// <param name="allowPrereleaseVersions"></param>
+		/// <param name="allowUnlisted"></param>
+		/// <returns></returns>
+		public void InstallPackage(string packageId, NuGetVersion version, bool allowPrereleaseVersions = true, bool allowUnlisted = false)
+		{
+			Task.Run(() =>
+			{
+				ResolutionContext resolutionContext = new ResolutionContext(
+					DependencyBehavior.Lowest,
+					allowPrereleaseVersions,
+					allowUnlisted,
+					VersionConstraints.None);
+				IEnumerable<NuGetProjectAction> installActions = _manager.PreviewInstallPackageAsync(
+					_manager.PackagesFolderNuGetProject,
+					new PackageIdentity(packageId, version),
+					resolutionContext,
+					_projectContext,
+					_sourceRepositories,
+					Enumerable.Empty<SourceRepository>(),
+					CancellationToken.None).GetAwaiter().GetResult();
+
+				_manager.ExecuteNuGetProjectActionsAsync(
+					_manager.PackagesFolderNuGetProject,
+					installActions,
+					_projectContext,
+					CancellationToken.None).GetAwaiter().GetResult();
+			}).GetAwaiter().GetResult();
+		}
+
+		/// <summary>
 		/// Updates a package
 		/// </summary>
 		/// <param name="packageId">The id of the package</param>
@@ -150,7 +151,7 @@ namespace Duality.Editor.PackageManagement
 		{
 			Task.Run(() =>
 			{
-				ResolutionContext resolutionContext = new ResolutionContext(DependencyBehavior.Lowest, allowPrereleaseVersions, allowUnlisted, VersionConstraints.ExactMajor);
+				ResolutionContext resolutionContext = new ResolutionContext(DependencyBehavior.Lowest, allowPrereleaseVersions, allowUnlisted, VersionConstraints.None);
 
 				IEnumerable<NuGetProjectAction> updateActions = _manager.PreviewUpdatePackagesAsync(
 					new PackageIdentity(packageId, version),
@@ -162,7 +163,7 @@ namespace Duality.Editor.PackageManagement
 					CancellationToken.None).GetAwaiter().GetResult();
 
 				_manager.ExecuteNuGetProjectActionsAsync(_manager.PackagesFolderNuGetProject, updateActions, _projectContext, CancellationToken.None).GetAwaiter().GetResult();
-			});
+			}).GetAwaiter().GetResult();
 		}
 
 		public void UninstallPackage(string packageId)

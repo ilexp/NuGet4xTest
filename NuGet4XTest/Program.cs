@@ -11,7 +11,7 @@ namespace Duality.Editor.PackageManagement
 			var f = packageManager.Search().ToArray();
 			var versions = f.ToArray()[0].GetVersions().ToArray();
 			var package = f.FirstOrDefault();
-			//await packageManager.InstallPackage(package.Identity.Id, package.Identity.Version);
+			packageManager.InstallPackage(package.Identity.Id, package.Identity.Version);
 
 			//var package2 = new PackageIdentity("Singularity.Duality.core", new NuGetVersion(0, 1, 3, 68));
 			//await packageManager.InstallPackage(package2.Id, package2.Version);
