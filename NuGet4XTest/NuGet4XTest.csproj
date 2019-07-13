@@ -22,7 +22,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>4</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -51,14 +50,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CustomNuGetSettings.cs" />
-    <Compile Include="CustomNuGetProject.cs" />
-    <Compile Include="CustomNuGetProjectContext.cs" />
-    <Compile Include="CustomNuGetLogger.cs" />
-    <Compile Include="CustomDeleteManager.cs" />
-    <Compile Include="CustomSolutionManager.cs" />
-    <Compile Include="DualityPackageManager.cs" />
-    <Compile Include="PackageMetadata.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -66,8 +57,8 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NuGet.PackageManagement">
-      <Version>4.4.0</Version>
+    <PackageReference Include="NuGet.Resolver">
+      <Version>5.1.0</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
