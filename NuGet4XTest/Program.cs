@@ -21,10 +21,14 @@ namespace Duality.Editor.PackageManagement
     {
         public static void Main(string[] args)
         {
+            
+            var logger = new ConsoleLogger();
+            var settings = Settings.LoadDefaultSettings(root: null);
+            var nuGetFramework = NuGetFramework.ParseFolder("net472");
             var packageId = "Singularity.Duality.core";
             var packageVersion = "0.13.0";
 
-            var f = new DualityPackageManager();
+            var f = new DualityPackageManager(nuGetFramework, logger, settings);
             f.InstallPackage(packageId, packageVersion).Wait();
             //var packageManager = new DualityPackageManager("ProjectRoot", "Packages");
             //var f = packageManager.Search().ToArray();
@@ -47,13 +51,15 @@ namespace Duality.Editor.PackageManagement
 
     public class DualityPackageManager
     {
-        private ILogger _logger;
-        private ISettings _settings;
+        private readonly ILogger _logger;
+        private readonly ISettings _settings;
+        private readonly NuGetFramework _nuGetFramework;
 
-        public DualityPackageManager()
+        public DualityPackageManager(NuGetFramework nuGetFramework, ILogger logger, ISettings settings)
         {
-            _logger = NullLogger.Instance;
-            _settings = Settings.LoadDefaultSettings(root: null);
+            _logger = logger;
+            _settings = settings;
+            _nuGetFramework = nuGetFramework;
         }
 
         public async Task InstallPackage(string id, string version)
@@ -65,7 +71,6 @@ namespace Duality.Editor.PackageManagement
 
         public async Task InstallPackage(PackageIdentity packageIdentity)
         {
-            var nuGetFramework = NuGetFramework.ParseFolder("net472");
             var sourceRepositoryProvider = new SourceRepositoryProvider(_settings, Repository.Provider.GetCoreV3());
 
             using (var cacheContext = new SourceCacheContext())
@@ -74,7 +79,7 @@ namespace Duality.Editor.PackageManagement
                 var availablePackages = new HashSet<SourcePackageDependencyInfo>(PackageIdentityComparer.Default);
                 await GetPackageDependencies(
                     packageIdentity,
-                    nuGetFramework, cacheContext, _logger, repositories, availablePackages);
+                    _nuGetFramework, cacheContext, _logger, repositories, availablePackages);
 
                 var resolverContext = new PackageResolverContext(
                     DependencyBehavior.Lowest,
@@ -96,11 +101,11 @@ namespace Duality.Editor.PackageManagement
                     ClientPolicyContext.GetClientPolicy(_settings, _logger),
                     _logger);
 
-                var frameworkReducer = new FrameworkReducer();
+                //var frameworkReducer = new FrameworkReducer();
 
                 foreach (var packageToInstall in packagesToInstall)
                 {
-                    PackageReaderBase packageReader;
+                    //PackageReaderBase packageReader;
                     var installedPath = packagePathResolver.GetInstalledPath(packageToInstall);
                     if (installedPath == null)
                     {
@@ -119,25 +124,25 @@ namespace Duality.Editor.PackageManagement
                             packageExtractionContext,
                             CancellationToken.None);
 
-                        packageReader = downloadResult.PackageReader;
+                        //packageReader = downloadResult.PackageReader;
                     }
                     else
                     {
-                        packageReader = new PackageFolderReader(installedPath);
+                        //packageReader = new PackageFolderReader(installedPath);
                     }
 
-                    var libItems = packageReader.GetLibItems();
-                    var nearest = frameworkReducer.GetNearest(nuGetFramework, libItems.Select(x => x.TargetFramework));
-                    Console.WriteLine(string.Join("\n", libItems
-                        .Where(x => x.TargetFramework.Equals(nearest))
-                        .SelectMany(x => x.Items)));
+                    //var libItems = packageReader.GetLibItems();
+                    //var nearest = frameworkReducer.GetNearest(_nuGetFramework, libItems.Select(x => x.TargetFramework));
+                    //Console.WriteLine(string.Join("\n", libItems
+                    //    .Where(x => x.TargetFramework.Equals(nearest))
+                    //    .SelectMany(x => x.Items)));
 
-                    var frameworkItems = packageReader.GetFrameworkItems();
-                    nearest = frameworkReducer.GetNearest(nuGetFramework,
-                        frameworkItems.Select(x => x.TargetFramework));
-                    Console.WriteLine(string.Join("\n", frameworkItems
-                        .Where(x => x.TargetFramework.Equals(nearest))
-                        .SelectMany(x => x.Items)));
+                    //var frameworkItems = packageReader.GetFrameworkItems();
+                    //nearest = frameworkReducer.GetNearest(_nuGetFramework,
+                    //    frameworkItems.Select(x => x.TargetFramework));
+                    //Console.WriteLine(string.Join("\n", frameworkItems
+                    //    .Where(x => x.TargetFramework.Equals(nearest))
+                    //    .SelectMany(x => x.Items)));
                 }
             }
         }
@@ -167,6 +172,87 @@ namespace Duality.Editor.PackageManagement
                         framework, cacheContext, logger, repositories, availablePackages);
                 }
             }
+        }
+    }
+
+    public class ConsoleLogger : ILogger
+    {
+        public void LogDebug(string data)
+        {
+            Console.WriteLine($"DEBUG: {data}");
+        }
+
+        public void LogVerbose(string data)
+        {
+            Console.WriteLine($"VERBOSE: {data}");
+        }
+
+        public void LogInformation(string data)
+        {
+            Console.WriteLine($"INFO: {data}");
+        }
+
+        public void LogMinimal(string data)
+        {
+            Console.WriteLine($"MIN: {data}");
+        }
+
+        public void LogWarning(string data)
+        {
+            Console.WriteLine($"WARN: {data}");
+        }
+
+        public void LogError(string data)
+        {
+            Console.WriteLine($"ERROR: {data}");
+        }
+
+        public void LogInformationSummary(string data)
+        {
+            Console.WriteLine($"INFO: {data}");
+        }
+
+        public void Log(LogLevel level, string data)
+        {
+            switch (level)
+            {
+                case LogLevel.Debug:
+                    LogDebug(data);
+                    break;
+                case LogLevel.Verbose:
+                    LogVerbose(data);
+                    break;
+                case LogLevel.Information:
+                    LogInformation(data);
+                    break;
+                case LogLevel.Minimal:
+                    LogMinimal(data);
+                    break;
+                case LogLevel.Warning:
+                    LogWarning(data);
+                    break;
+                case LogLevel.Error:
+                    LogError(data);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(level), level, null);
+            }
+        }
+
+        public async Task LogAsync(LogLevel level, string data)
+        {
+            Log(level, data);
+            await Task.Yield();
+        }
+
+        public void Log(ILogMessage message)
+        {
+            Log(message.Level, message.Message);
+        }
+
+        public async Task LogAsync(ILogMessage message)
+        {
+            await LogAsync(message.Level, message.Message);
         }
     }
 }
