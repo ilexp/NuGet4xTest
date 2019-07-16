@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using NuGet.Common;
 using NuGet.Configuration;
 using NuGet.Frameworks;
@@ -24,6 +25,7 @@ namespace Duality.Editor.PackageManagement
 
         private readonly PackagePathResolver _packagePathResolver;
         private readonly string _packagePath;
+        private readonly string _globalPackagesFolder;
 
         private readonly SourceRepository[] _repositories;
 
@@ -36,6 +38,7 @@ namespace Duality.Editor.PackageManagement
             _packagePathResolver = new PackagePathResolver(packagePath);
             var sourceRepositoryProvider = new SourceRepositoryProvider(_settings, Repository.Provider.GetCoreV3());
             _repositories = sourceRepositoryProvider.GetRepositories().ToArray();
+            _globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(_settings);
         }
 
         public async Task InstallPackage(string id, string version)
@@ -63,6 +66,7 @@ namespace Duality.Editor.PackageManagement
                 var resolver = new PackageResolver();
                 var packagesToInstall = resolver.Resolve(resolverContext, CancellationToken.None)
                     .Select(p => availablePackages.Single(x => PackageIdentityComparer.Default.Equals(x, p)));
+
                 var packageExtractionContext = new PackageExtractionContext(
                     PackageSaveMode.Defaultv3,
                     XmlDocFileSaveMode.None,
@@ -77,12 +81,11 @@ namespace Duality.Editor.PackageManagement
                     var installedPath = _packagePathResolver.GetInstalledPath(packageToInstall);
                     if (installedPath == null)
                     {
-                        var downloadResource =
-                            await packageToInstall.Source.GetResourceAsync<DownloadResource>(CancellationToken.None);
+                        var downloadResource = await packageToInstall.Source.GetResourceAsync<DownloadResource>(CancellationToken.None);
                         var downloadResult = await downloadResource.GetDownloadResourceResultAsync(
                             packageToInstall,
                             new PackageDownloadContext(cacheContext),
-                            SettingsUtility.GetGlobalPackagesFolder(_settings),
+                            _globalPackagesFolder,
                             NullLogger.Instance, CancellationToken.None);
 
                         await PackageExtractor.ExtractPackageAsync(
