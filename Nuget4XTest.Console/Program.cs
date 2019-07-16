@@ -1,14 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Duality.Editor.PackageManagement;
 using NuGet.Configuration;
 using NuGet.Frameworks;
-using NuGet.Versioning;
 
-namespace Duality.Editor.PackageManagement
+namespace Nuget4XTest.Console
 {
-    internal class Program
+    class Program
     {
-        public static void Main(string[] args)
+        static void Main(string[] args)
         {
             var config = new PackageConfig();
             config.Add("foo1", "1.01");
@@ -19,7 +23,7 @@ namespace Duality.Editor.PackageManagement
 
             var foo = new PackageConfig(configPath);
 
-            Console.ReadKey();
+            System.Console.ReadKey();
             var logger = new ConsoleLogger();
             var settings = Settings.LoadDefaultSettings(root: null);
             var nuGetFramework = NuGetFramework.ParseFolder("net472");
@@ -49,7 +53,7 @@ namespace Duality.Editor.PackageManagement
 
             //await packageManager.UpdatePackage("Newtonsoft.Json");
             //await packageManager.UninstallPackage("Newtonsoft.Json");
-            Console.ReadLine();
+            System.Console.ReadLine();
         }
     }
 }
