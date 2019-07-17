@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
+using Duality.Editor.PackageManagement;
 using NuGet.Common;
 using NuGet.Configuration;
 using NuGet.Frameworks;
@@ -15,7 +15,7 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
 
-namespace Duality.Editor.PackageManagement
+namespace NuGet4XTest
 {
     public class DualityPackageManager
     {
@@ -26,6 +26,8 @@ namespace Duality.Editor.PackageManagement
         private readonly PackagePathResolver _packagePathResolver;
         private readonly string _packagePath;
         private readonly string _globalPackagesFolder;
+
+        private readonly string _packageConfigPath;
 
         private readonly SourceRepository[] _repositories;
 
@@ -39,6 +41,8 @@ namespace Duality.Editor.PackageManagement
             var sourceRepositoryProvider = new SourceRepositoryProvider(_settings, Repository.Provider.GetCoreV3());
             _repositories = sourceRepositoryProvider.GetRepositories().ToArray();
             _globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(_settings);
+
+            _packageConfigPath = "package.config";
         }
 
         public async Task InstallPackage(string id, string version)
@@ -64,8 +68,16 @@ namespace Duality.Editor.PackageManagement
                     NullLogger.Instance);
 
                 var resolver = new PackageResolver();
-                var packagesToInstall = resolver.Resolve(resolverContext, CancellationToken.None)
-                    .Select(p => availablePackages.Single(x => PackageIdentityComparer.Default.Equals(x, p)));
+                var packagesToInstall = resolver.Resolve(resolverContext, CancellationToken.None).ToArray();
+
+                var packageConfig = new PackageConfig(_packageConfigPath);
+
+                foreach (var identity in packagesToInstall)
+                {
+                    packageConfig.Add(identity);
+                }
+
+                packageConfig.Serialize(_packageConfigPath);
 
                 var packageExtractionContext = new PackageExtractionContext(
                     PackageSaveMode.Defaultv3,
@@ -73,47 +85,102 @@ namespace Duality.Editor.PackageManagement
                     ClientPolicyContext.GetClientPolicy(_settings, _logger),
                     _logger);
 
-                //var frameworkReducer = new FrameworkReducer();
-
+                var dependencyInfoResources = _repositories.Select(x => x.GetResource<DependencyInfoResource>()).ToArray();
                 foreach (var packageToInstall in packagesToInstall)
                 {
-                    //PackageReaderBase packageReader;
-                    var installedPath = _packagePathResolver.GetInstalledPath(packageToInstall);
-                    if (installedPath == null)
-                    {
-                        var downloadResource = await packageToInstall.Source.GetResourceAsync<DownloadResource>(CancellationToken.None);
-                        var downloadResult = await downloadResource.GetDownloadResourceResultAsync(
-                            packageToInstall,
-                            new PackageDownloadContext(cacheContext),
-                            _globalPackagesFolder,
-                            NullLogger.Instance, CancellationToken.None);
+                    await RestorePackage(dependencyInfoResources, packageToInstall, cacheContext, packageExtractionContext);
+                }
+                //var packageExtractionContext = new PackageExtractionContext(
+                //    PackageSaveMode.Defaultv3,
+                //    XmlDocFileSaveMode.None,
+                //    ClientPolicyContext.GetClientPolicy(_settings, _logger),
+                //    _logger);
+                //
+                ////var frameworkReducer = new FrameworkReducer();
+                //
+                //foreach (var packageToInstall in packagesToInstall)
+                //{
+                //    //PackageReaderBase packageReader;
+                //    var installedPath = _packagePathResolver.GetInstalledPath(packageToInstall);
+                //    if (installedPath == null)
+                //    {
+                //        var downloadResource = await packageToInstall.Source.GetResourceAsync<DownloadResource>(CancellationToken.None);
+                //        var downloadResult = await downloadResource.GetDownloadResourceResultAsync(
+                //            packageToInstall,
+                //            new PackageDownloadContext(cacheContext),
+                //            _globalPackagesFolder,
+                //            NullLogger.Instance, CancellationToken.None);
+                //
+                //        await PackageExtractor.ExtractPackageAsync(
+                //            downloadResult.PackageSource,
+                //            downloadResult.PackageStream,
+                //            _packagePathResolver,
+                //            packageExtractionContext,
+                //            CancellationToken.None);
+                //
+                //        //packageReader = downloadResult.PackageReader;
+                //    }
+                //    else
+                //    {
+                //        //packageReader = new PackageFolderReader(installedPath);
+                //    }
+                //
+                //    //var libItems = packageReader.GetLibItems();
+                //    //var nearest = frameworkReducer.GetNearest(_nuGetFramework, libItems.Select(x => x.TargetFramework));
+                //    //Console.WriteLine(string.Join("\n", libItems
+                //    //    .Where(x => x.TargetFramework.Equals(nearest))
+                //    //    .SelectMany(x => x.Items)));
+                //
+                //    //var frameworkItems = packageReader.GetFrameworkItems();
+                //    //nearest = frameworkReducer.GetNearest(_nuGetFramework,
+                //    //    frameworkItems.Select(x => x.TargetFramework));
+                //    //Console.WriteLine(string.Join("\n", frameworkItems
+                //    //    .Where(x => x.TargetFramework.Equals(nearest))
+                //    //    .SelectMany(x => x.Items)));
+                //}
+            }
+        }
 
-                        await PackageExtractor.ExtractPackageAsync(
-                            downloadResult.PackageSource,
-                            downloadResult.PackageStream,
-                            _packagePathResolver,
-                            packageExtractionContext,
-                            CancellationToken.None);
+        public async Task RestorePackages()
+        {
+            var packageConfig = new PackageConfig(_packageConfigPath);
+            var dependencyInfoResources = _repositories.Select(x => x.GetResource<DependencyInfoResource>()).ToArray();
 
-                        //packageReader = downloadResult.PackageReader;
-                    }
-                    else
-                    {
-                        //packageReader = new PackageFolderReader(installedPath);
-                    }
+            using var cacheContext = new SourceCacheContext();
 
-                    //var libItems = packageReader.GetLibItems();
-                    //var nearest = frameworkReducer.GetNearest(_nuGetFramework, libItems.Select(x => x.TargetFramework));
-                    //Console.WriteLine(string.Join("\n", libItems
-                    //    .Where(x => x.TargetFramework.Equals(nearest))
-                    //    .SelectMany(x => x.Items)));
+            var packageExtractionContext = new PackageExtractionContext(
+                PackageSaveMode.Defaultv3,
+                XmlDocFileSaveMode.None,
+                ClientPolicyContext.GetClientPolicy(_settings, _logger),
+                _logger);
 
-                    //var frameworkItems = packageReader.GetFrameworkItems();
-                    //nearest = frameworkReducer.GetNearest(_nuGetFramework,
-                    //    frameworkItems.Select(x => x.TargetFramework));
-                    //Console.WriteLine(string.Join("\n", frameworkItems
-                    //    .Where(x => x.TargetFramework.Equals(nearest))
-                    //    .SelectMany(x => x.Items)));
+            foreach (var packageIdentity in packageConfig.Packages)
+            {
+                await RestorePackage(dependencyInfoResources, packageIdentity, cacheContext, packageExtractionContext);
+            }
+        }
+
+        private async Task RestorePackage(DependencyInfoResource[] dependencyInfoResources, PackageIdentity packageIdentity, SourceCacheContext cacheContext, PackageExtractionContext packageExtractionContext)
+        {
+            foreach (var dependencyInfoResource in dependencyInfoResources)
+            {
+                var dependencyInfo = await dependencyInfoResource.ResolvePackage(packageIdentity, _nuGetFramework, cacheContext, _logger, CancellationToken.None);
+                if (dependencyInfo != null)
+                {
+                    var downloadResource = await dependencyInfo.Source.GetResourceAsync<DownloadResource>(CancellationToken.None);
+                    var downloadResult = await downloadResource.GetDownloadResourceResultAsync(
+                        dependencyInfo,
+                        new PackageDownloadContext(cacheContext),
+                        _globalPackagesFolder,
+                        NullLogger.Instance, CancellationToken.None);
+
+                    await PackageExtractor.ExtractPackageAsync(
+                        downloadResult.PackageSource,
+                        downloadResult.PackageStream,
+                        _packagePathResolver,
+                        packageExtractionContext,
+                        CancellationToken.None);
+                    break;
                 }
             }
         }
@@ -148,6 +215,10 @@ namespace Duality.Editor.PackageManagement
 
             var path = _packagePathResolver.GetInstallPath(packageIdentity);
             Directory.Delete(path, true);
+            var packageConfig = new PackageConfig(_packageConfigPath);
+            packageConfig.Remove(packageIdentity);
+            packageConfig.Serialize(_packageConfigPath);
+
         }
 
         public async Task<HashSet<SourcePackageDependencyInfo>> GetPackageDependencies(PackageIdentity package,
@@ -171,16 +242,16 @@ namespace Duality.Editor.PackageManagement
             foreach (var dependencyInfoResource in dependencyInfoResources)
             {
                 var dependencyInfo = await dependencyInfoResource.ResolvePackage(package, framework, cacheContext, logger, CancellationToken.None);
-
-                if (dependencyInfo == null) continue;
-
-                availablePackages.Add(dependencyInfo);
-
-                foreach (var dependency in dependencyInfo.Dependencies)
+                if (dependencyInfo != null)
                 {
-                    await GetPackageDependencies(
-                        new PackageIdentity(dependency.Id, dependency.VersionRange.MinVersion),
-                        framework, cacheContext, logger, dependencyInfoResources, availablePackages);
+                    availablePackages.Add(dependencyInfo);
+
+                    foreach (var dependency in dependencyInfo.Dependencies)
+                    {
+                        await GetPackageDependencies(
+                            new PackageIdentity(dependency.Id, dependency.VersionRange.MinVersion),
+                            framework, cacheContext, logger, dependencyInfoResources, availablePackages);
+                    }
                 }
             }
         }

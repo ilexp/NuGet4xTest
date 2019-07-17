@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Duality.Editor.PackageManagement;
 using NuGet.Configuration;
 using NuGet.Frameworks;
+using NuGet4XTest;
 
 namespace Nuget4XTest.Console
 {
@@ -14,16 +15,6 @@ namespace Nuget4XTest.Console
     {
         static void Main(string[] args)
         {
-            var config = new PackageConfig();
-            config.Add("foo1", "1.01");
-            config.Add("foo2", "1.02");
-
-            var configPath = "package.config";
-            config.Serialize(configPath);
-
-            var foo = new PackageConfig(configPath);
-
-            System.Console.ReadKey();
             var logger = new ConsoleLogger();
             var settings = Settings.LoadDefaultSettings(root: null);
             var nuGetFramework = NuGetFramework.ParseFolder("net472");

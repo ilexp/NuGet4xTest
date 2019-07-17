@@ -7,11 +7,13 @@ namespace Duality.Editor.PackageManagement
 {
     public class PackageConfig
     {
-        public List<PackageIdentity> Packages { get; } = new List<PackageIdentity>();
+        public HashSet<PackageIdentity> Packages { get; } = new HashSet<PackageIdentity>(PackageIdentityComparer.Default);
 
         public void Add(string id, string version) => Add(PackageIdentityParser.Parse(id, version));
 
         public void Add(PackageIdentity packageIdentity) => Packages.Add(packageIdentity);
+
+        public void Remove(PackageIdentity packageIdentity) => Packages.Remove(packageIdentity);
 
         public PackageConfig()
         {

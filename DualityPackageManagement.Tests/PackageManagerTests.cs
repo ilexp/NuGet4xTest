@@ -4,6 +4,7 @@ using System.Linq;
 using Duality.Editor.PackageManagement;
 using NuGet.Packaging.Core;
 using NuGet.Versioning;
+using NuGet4XTest;
 using NUnit.Framework;
 
 namespace DualityPackageManagement.Tests
