@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -15,7 +14,6 @@ using NuGet.Packaging.Signing;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
-using NuGet.Versioning;
 
 namespace NuGet4XTest
 {
@@ -75,98 +73,48 @@ namespace NuGet4XTest
 
         public async Task InstallPackage(PackageIdentity packageIdentity)
         {
-            using (var cacheContext = new SourceCacheContext())
+            using var cacheContext = new SourceCacheContext();
+            var availablePackages = await GetPackageDependencies(packageIdentity, cacheContext);
+
+            var resolverContext = new PackageResolverContext(
+                DependencyBehavior.Lowest,
+                new[] { packageIdentity.Id },
+                Enumerable.Empty<string>(),
+                Enumerable.Empty<PackageReference>(),
+                Enumerable.Empty<PackageIdentity>(),
+                availablePackages,
+                _repositories.Select(s => s.PackageSource),
+                NullLogger.Instance);
+
+            var resolver = new PackageResolver();
+            var packagesToInstall = resolver.Resolve(resolverContext, CancellationToken.None).ToArray();
+
+            var packageConfig = new PackageConfig(_packageConfigPath);
+
+            foreach (var identity in packagesToInstall)
             {
-                var availablePackages = await GetPackageDependencies(packageIdentity, cacheContext);
-
-                var resolverContext = new PackageResolverContext(
-                    DependencyBehavior.Lowest,
-                    new[] { packageIdentity.Id },
-                    Enumerable.Empty<string>(),
-                    Enumerable.Empty<PackageReference>(),
-                    Enumerable.Empty<PackageIdentity>(),
-                    availablePackages,
-                    _repositories.Select(s => s.PackageSource),
-                    NullLogger.Instance);
-
-                var resolver = new PackageResolver();
-                var packagesToInstall = resolver.Resolve(resolverContext, CancellationToken.None).ToArray();
-
-                var packageConfig = new PackageConfig(_packageConfigPath);
-
-                foreach (var identity in packagesToInstall)
+                var previouslyInstalledPackages = packageConfig.Packages.Where(x => x.Id == identity.Id).ToArray(); //Take a copy to avoid modifying the enumerable
+                foreach (var previouslyInstalledPackage in previouslyInstalledPackages)
                 {
-                    var previouslyInstalledPackages = packageConfig.Packages.Where(x => x.Id == identity.Id).ToArray(); //Take a copy to avoid modifying the enumerable
-                    foreach (var previouslyInstalledPackage in previouslyInstalledPackages)
-                    {
-                        if (previouslyInstalledPackage.Version == identity.Version) continue; //Nothing changed so just skip to save some time.
-                        TryRemovePackageFolder(previouslyInstalledPackage);
-                        packageConfig.Remove(previouslyInstalledPackage);
-                    }
-                    packageConfig.Add(identity);
+                    if (previouslyInstalledPackage.Version == identity.Version) continue; //Nothing changed so just skip to save some time.
+                    TryRemovePackageFolder(previouslyInstalledPackage);
+                    packageConfig.Remove(previouslyInstalledPackage);
                 }
+                packageConfig.Add(identity);
+            }
 
-                packageConfig.Serialize(_packageConfigPath);
+            packageConfig.Serialize(_packageConfigPath);
 
-                var packageExtractionContext = new PackageExtractionContext(
-                    PackageSaveMode.Defaultv3,
-                    XmlDocFileSaveMode.None,
-                    ClientPolicyContext.GetClientPolicy(_settings, _logger),
-                    _logger);
+            var packageExtractionContext = new PackageExtractionContext(
+                PackageSaveMode.Defaultv3,
+                XmlDocFileSaveMode.None,
+                ClientPolicyContext.GetClientPolicy(_settings, _logger),
+                _logger);
 
-                var dependencyInfoResources = _repositories.Select(x => x.GetResource<DependencyInfoResource>()).ToArray();
-                foreach (var packageToInstall in packagesToInstall)
-                {
-                    await RestorePackage(dependencyInfoResources, packageToInstall, cacheContext, packageExtractionContext);
-                }
-                //var packageExtractionContext = new PackageExtractionContext(
-                //    PackageSaveMode.Defaultv3,
-                //    XmlDocFileSaveMode.None,
-                //    ClientPolicyContext.GetClientPolicy(_settings, _logger),
-                //    _logger);
-                //
-                ////var frameworkReducer = new FrameworkReducer();
-                //
-                //foreach (var packageToInstall in packagesToInstall)
-                //{
-                //    //PackageReaderBase packageReader;
-                //    var installedPath = _packagePathResolver.GetInstalledPath(packageToInstall);
-                //    if (installedPath == null)
-                //    {
-                //        var downloadResource = await packageToInstall.Source.GetResourceAsync<DownloadResource>(CancellationToken.None);
-                //        var downloadResult = await downloadResource.GetDownloadResourceResultAsync(
-                //            packageToInstall,
-                //            new PackageDownloadContext(cacheContext),
-                //            _globalPackagesFolder,
-                //            NullLogger.Instance, CancellationToken.None);
-                //
-                //        await PackageExtractor.ExtractPackageAsync(
-                //            downloadResult.PackageSource,
-                //            downloadResult.PackageStream,
-                //            _packagePathResolver,
-                //            packageExtractionContext,
-                //            CancellationToken.None);
-                //
-                //        //packageReader = downloadResult.PackageReader;
-                //    }
-                //    else
-                //    {
-                //        //packageReader = new PackageFolderReader(installedPath);
-                //    }
-                //
-                //    //var libItems = packageReader.GetLibItems();
-                //    //var nearest = frameworkReducer.GetNearest(_nuGetFramework, libItems.Select(x => x.TargetFramework));
-                //    //Console.WriteLine(string.Join("\n", libItems
-                //    //    .Where(x => x.TargetFramework.Equals(nearest))
-                //    //    .SelectMany(x => x.Items)));
-                //
-                //    //var frameworkItems = packageReader.GetFrameworkItems();
-                //    //nearest = frameworkReducer.GetNearest(_nuGetFramework,
-                //    //    frameworkItems.Select(x => x.TargetFramework));
-                //    //Console.WriteLine(string.Join("\n", frameworkItems
-                //    //    .Where(x => x.TargetFramework.Equals(nearest))
-                //    //    .SelectMany(x => x.Items)));
-                //}
+            var dependencyInfoResources = _repositories.Select(x => x.GetResource<DependencyInfoResource>()).ToArray();
+            foreach (var packageToInstall in packagesToInstall)
+            {
+                await RestorePackage(dependencyInfoResources, packageToInstall, cacheContext, packageExtractionContext);
             }
         }
 
@@ -232,24 +180,20 @@ namespace NuGet4XTest
             await UninstallPackage(identity);
         }
 
-        public async Task UninstallPackage(PackageIdentity packageIdentity, bool ignoreDependencies = false)
+        public async Task UninstallPackage(PackageIdentity packageIdentity)
         {
             var packageConfig = new PackageConfig(_packageConfigPath);
-
-            if (ignoreDependencies == false)
+            using (var cacheContext = new SourceCacheContext())
             {
-                using (var cacheContext = new SourceCacheContext())
+                foreach (var installedPackage in packageConfig.Packages)
                 {
-                    foreach (var installedPackage in packageConfig.Packages)
-                    {
-                        if (installedPackage.Equals(packageIdentity)) continue;
+                    if (installedPackage.Equals(packageIdentity)) continue;
 
-                        var dependencies = await GetPackageDependencies(installedPackage, cacheContext);
+                    var dependencies = await GetPackageDependencies(installedPackage, cacheContext);
 
-                        if (dependencies.Contains(packageIdentity))
-                            throw new Exception(
-                                $"Cannot uninstall {packageIdentity} because {installedPackage} depends on it");
-                    }
+                    if (dependencies.Contains(packageIdentity))
+                        throw new Exception(
+                            $"Cannot uninstall {packageIdentity} because {installedPackage} depends on it");
                 }
             }
 
@@ -278,7 +222,6 @@ namespace NuGet4XTest
 
             foreach (var dependencyInfoResource in dependencyInfoResources)
             {
-                if (dependencyInfoResource is LocalDependencyInfoResource && package.HasVersion == false) continue;
                 var dependencyInfo = await dependencyInfoResource.ResolvePackage(package, framework, cacheContext, logger, CancellationToken.None);
                 if (dependencyInfo != null)
                 {
