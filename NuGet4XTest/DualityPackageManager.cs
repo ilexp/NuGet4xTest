@@ -99,10 +99,9 @@ namespace NuGet4XTest
                     var previouslyInstalledPackages = packageConfig.Packages.Where(x => x.Id == identity.Id).ToArray(); //Take a copy to avoid modifying the enumerable
                     foreach (var previouslyInstalledPackage in previouslyInstalledPackages)
                     {
-                        if (previouslyInstalledPackage.Version == identity.Version) continue;
+                        if (previouslyInstalledPackage.Version == identity.Version) continue; //Nothing changed so just skip to save some time.
+                        TryRemovePackageFolder(previouslyInstalledPackage);
                         packageConfig.Remove(previouslyInstalledPackage);
-                        var path = _packagePathResolver.GetInstallPath(previouslyInstalledPackage);
-                        if (Directory.Exists(path)) Directory.Delete(path, true);
                     }
                     packageConfig.Add(identity);
                 }
@@ -215,6 +214,12 @@ namespace NuGet4XTest
             }
         }
 
+        private void TryRemovePackageFolder(PackageIdentity packageIdentity)
+        {
+            var path = _packagePathResolver.GetInstallPath(packageIdentity);
+            if (Directory.Exists(path)) Directory.Delete(path, true);
+        }
+
         public IEnumerable<PackageIdentity> GetInstalledPackages()
         {
             var packages = Directory.GetDirectories(_packagePath).Select(Path.GetFileName).Select(PackageIdentityParser.Parse).ToArray();
@@ -229,13 +234,13 @@ namespace NuGet4XTest
 
         public async Task UninstallPackage(PackageIdentity packageIdentity, bool ignoreDependencies = false)
         {
-            var installedPackages = GetInstalledPackages();
+            var packageConfig = new PackageConfig(_packageConfigPath);
 
             if (ignoreDependencies == false)
             {
                 using (var cacheContext = new SourceCacheContext())
                 {
-                    foreach (var installedPackage in installedPackages)
+                    foreach (var installedPackage in packageConfig.Packages)
                     {
                         if (installedPackage.Equals(packageIdentity)) continue;
 
@@ -248,12 +253,9 @@ namespace NuGet4XTest
                 }
             }
 
-            var path = _packagePathResolver.GetInstallPath(packageIdentity);
-            Directory.Delete(path, true);
-            var packageConfig = new PackageConfig(_packageConfigPath);
+            TryRemovePackageFolder(packageIdentity);
             packageConfig.Remove(packageIdentity);
             packageConfig.Serialize(_packageConfigPath);
-
         }
 
         public async Task<HashSet<SourcePackageDependencyInfo>> GetPackageDependencies(PackageIdentity package,
