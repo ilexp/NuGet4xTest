@@ -13,22 +13,25 @@ namespace Nuget4XTest.Console
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var logger = new ConsoleLogger();
             var settings = Settings.LoadDefaultSettings(root: null);
             var nuGetFramework = NuGetFramework.ParseFolder("net472");
             var packagePath = Path.GetFullPath("packages");
             var packageId = "Singularity.Duality.core";
-            var packageVersion = "0.13.0";
+            var packageVersion = "0.12.0";
 
             var f = new DualityPackageManager(nuGetFramework, logger, settings, packagePath);
             f.InstallPackage(packageId, packageVersion).Wait();
 
+
+            await f.UpdatePackage(packageId);
+
             var installedPackages = f.GetInstalledPackages();
 
-            f.UninstallPackage(packageId, packageVersion).Wait();
-            f.UninstallPackage("Singularity", "0.13.0").Wait();
+            //f.UninstallPackage(packageId, packageVersion).Wait();
+            //f.UninstallPackage("Singularity", "0.13.0").Wait();
 
             //Search for packages that have both duality and plugin as tags, also includes prereleases.
             var results = f.Search("tag:duality,plugin", true).Result;

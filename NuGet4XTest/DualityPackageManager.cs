@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -14,6 +15,7 @@ using NuGet.Packaging.Signing;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
+using NuGet.Versioning;
 
 namespace NuGet4XTest
 {
@@ -58,6 +60,13 @@ namespace NuGet4XTest
             return result;
         }
 
+        public async Task UpdatePackage(string id)
+        {
+            var packageMetadata = (await Search($"id:{id}")).First();
+            var latestVersion = (await packageMetadata.GetVersionsAsync()).Max(x => x.Version);
+            await InstallPackage(new PackageIdentity(id, latestVersion));
+        }
+
         public async Task InstallPackage(string id, string version)
         {
             var identity = PackageIdentityParser.Parse(id, version);
@@ -87,6 +96,14 @@ namespace NuGet4XTest
 
                 foreach (var identity in packagesToInstall)
                 {
+                    var previouslyInstalledPackages = packageConfig.Packages.Where(x => x.Id == identity.Id).ToArray(); //Take a copy to avoid modifying the enumerable
+                    foreach (var previouslyInstalledPackage in previouslyInstalledPackages)
+                    {
+                        if (previouslyInstalledPackage.Version == identity.Version) continue;
+                        packageConfig.Remove(previouslyInstalledPackage);
+                        var path = _packagePathResolver.GetInstallPath(previouslyInstalledPackage);
+                        if (Directory.Exists(path)) Directory.Delete(path, true);
+                    }
                     packageConfig.Add(identity);
                 }
 
@@ -210,19 +227,24 @@ namespace NuGet4XTest
             await UninstallPackage(identity);
         }
 
-        public async Task UninstallPackage(PackageIdentity packageIdentity)
+        public async Task UninstallPackage(PackageIdentity packageIdentity, bool ignoreDependencies = false)
         {
             var installedPackages = GetInstalledPackages();
 
-            using (var cacheContext = new SourceCacheContext())
+            if (ignoreDependencies == false)
             {
-                foreach (var installedPackage in installedPackages)
+                using (var cacheContext = new SourceCacheContext())
                 {
-                    if (installedPackage.Equals(packageIdentity)) continue;
+                    foreach (var installedPackage in installedPackages)
+                    {
+                        if (installedPackage.Equals(packageIdentity)) continue;
 
-                    var dependencies = await GetPackageDependencies(installedPackage, cacheContext);
+                        var dependencies = await GetPackageDependencies(installedPackage, cacheContext);
 
-                    if (dependencies.Contains(packageIdentity)) throw new Exception($"Cannot uninstall {packageIdentity} because {installedPackage} depends on it");
+                        if (dependencies.Contains(packageIdentity))
+                            throw new Exception(
+                                $"Cannot uninstall {packageIdentity} because {installedPackage} depends on it");
+                    }
                 }
             }
 
@@ -254,6 +276,7 @@ namespace NuGet4XTest
 
             foreach (var dependencyInfoResource in dependencyInfoResources)
             {
+                if (dependencyInfoResource is LocalDependencyInfoResource && package.HasVersion == false) continue;
                 var dependencyInfo = await dependencyInfoResource.ResolvePackage(package, framework, cacheContext, logger, CancellationToken.None);
                 if (dependencyInfo != null)
                 {
