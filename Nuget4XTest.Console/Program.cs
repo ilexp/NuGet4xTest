@@ -29,6 +29,10 @@ namespace Nuget4XTest.Console
 
             f.UninstallPackage(packageId, packageVersion).Wait();
             f.UninstallPackage("Singularity", "0.13.0").Wait();
+
+            //Search for packages that have both duality and plugin as tags, also includes prereleases.
+            var results = f.Search("tag:duality,plugin", true).Result;
+
             //var packageManager = new DualityPackageManager("ProjectRoot", "Packages");
             //var f = packageManager.Search().ToArray();
             //var versions = f.ToArray()[0].GetVersions().ToArray();

@@ -45,6 +45,19 @@ namespace NuGet4XTest
             _packageConfigPath = "package.config";
         }
 
+        public async Task<IEnumerable<IPackageSearchMetadata>> Search(string searchTerm, bool includePrereleases = false)
+        {
+            var packageMetadataResources = _repositories.Select(x => x.GetResource<PackageSearchResource>()).ToArray();
+
+            IEnumerable<IPackageSearchMetadata> result = Enumerable.Empty<IPackageSearchMetadata>();
+            foreach (var packageMetadataResource in packageMetadataResources)
+            {
+                result = result.Concat(await packageMetadataResource.SearchAsync(searchTerm, new SearchFilter(includePrereleases), 0, 1000, _logger, CancellationToken.None));
+            }
+
+            return result;
+        }
+
         public async Task InstallPackage(string id, string version)
         {
             var identity = PackageIdentityParser.Parse(id, version);
